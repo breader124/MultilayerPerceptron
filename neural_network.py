@@ -2,9 +2,8 @@ from math import atan, pi, sqrt
 from random import uniform
 from typing import List
 
-from math_utils import arctan_derivative, scaled_atan, matrix_dot_vector
-
-Matrix = List[List[float]]
+from math_utils import activation_derivative, activation, matrix_dot_vector, \
+    Matrix, Vector
 
 
 class NeuralNetwork:
@@ -34,17 +33,17 @@ class NeuralNetwork:
 
         return matrices
 
-    def predict(self, input_data: List[float]) -> List[float]:
+    def predict(self, input_data: Vector) -> Vector:
         output = input_data
 
         for layer in self.weights:
             output = output + [1.0]  # bias neuron
             summed = matrix_dot_vector(layer, output)
-            output = list(map(scaled_atan, summed))
+            output = list(map(activation, summed))
 
         return output
 
-    def debug_compute(self, input_data: List[float]):
+    def debug_compute(self, input_data: Vector):
         output_matrix = []
         sum_matrix = []
         for layer in self.weights:
@@ -54,7 +53,7 @@ class NeuralNetwork:
                 summed = neuron[-1]
                 for i, weight in enumerate(neuron[:-1]):
                     summed += input_data[i] * weight
-                activated = scaled_atan(summed)
+                activated = activation(summed)
 
                 layer_sums.append(summed)
                 layer_output.append(activated)
@@ -73,7 +72,7 @@ class NeuralNetwork:
         for out, s, ideal in zip(output_matrix[-1], sum_matrix[-1],
                                  target_results):
             y_derivative = 2 * (out - ideal)
-            sum_derivative = y_derivative * arctan_derivative(s)
+            sum_derivative = y_derivative * activation_derivative(s)
             res = {
                 'y': y_derivative,
                 's': sum_derivative
@@ -91,7 +90,7 @@ class NeuralNetwork:
                     weight = self.weights[layer_index + 1][neuron_next_layer][
                         neuron_index]
                     y_derivative += neuron_sum * weight
-                sum_derivative = y_derivative * arctan_derivative(
+                sum_derivative = y_derivative * activation_derivative(
                     sum_matrix[layer_index][neuron_index])
                 res = {
                     'y': y_derivative,

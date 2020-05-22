@@ -1,17 +1,19 @@
-from math import atan, pi
+from math import exp
+from typing import List
+
+Vector = List[float]
+Matrix = List[List[float]]
 
 
-def arctan_derivative(x):
-    return 1 / (1 + x ** 2)
+def activation_derivative(x: float) -> float:
+    return activation(x) * (1 - activation(x))
 
 
-def scaled_atan(x):
-    value = atan(x)
-    offset = pi / 2
-    return (value + offset) / pi
+def activation(x: float) -> float:
+    return 1 / (1 + exp(-x))
 
 
-def matrix_dot_vector(A, b):
+def matrix_dot_vector(A: Matrix, b: Vector) -> Vector:
     result = [
         sum(x * y for x, y in zip(row, b))
         for row in A
@@ -20,5 +22,5 @@ def matrix_dot_vector(A, b):
     return result
 
 
-def loss_function(y_target, y):
+def loss_function(y_target: float, y: float) -> float:
     return (y - y_target) ** 2
