@@ -53,6 +53,15 @@ def compute(input_data, weights):
     return output_matrix, sum_matrix
 
 
+def matrix_dot_vector(A, b):
+    result = [
+        sum(x * y for x, y in zip(row, b))
+        for row in A
+    ]
+
+    return result
+
+
 def scaled_atan(x):
     value = atan(x)
     offset = pi / 2
