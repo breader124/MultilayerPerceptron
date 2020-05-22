@@ -3,6 +3,8 @@ from math import atan, pi, sqrt
 from random import uniform
 from typing import List
 
+from math_utils import arctan_derivative, scaled_atan, matrix_dot_vector
+
 Matrix = List[List[float]]
 
 
@@ -13,25 +15,6 @@ def parse_args():
 
     args = parser.parse_args()
     return args.inp, args.layers
-
-
-def arctan_derivative(x):
-    return 1 / (1 + x ** 2)
-
-
-def scaled_atan(x):
-    value = atan(x)
-    offset = pi / 2
-    return (value + offset) / pi
-
-
-def matrix_dot_vector(A, b):
-    result = [
-        sum(x * y for x, y in zip(row, b))
-        for row in A
-    ]
-
-    return result
 
 
 class NeuralNetwork:
