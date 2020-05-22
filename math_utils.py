@@ -18,3 +18,7 @@ def matrix_dot_vector(A, b):
     ]
 
     return result
+
+
+def loss_function(y_target, y):
+    return (y - y_target) ** 2

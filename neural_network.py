@@ -65,16 +65,13 @@ class NeuralNetwork:
 
         return output_matrix, sum_matrix
 
-    def loss_function(self, given_y, y):
-        return (y - given_y) ** 2
-
     def backward_propagation(self, output_matrix, sum_matrix,
-                             given_results, input_values):
+                             target_results, input_values):
         derivatives = []
 
         last_layer_der = []
         for out, s, ideal in zip(output_matrix[-1], sum_matrix[-1],
-                                 given_results):
+                                 target_results):
             y_derivative = 2 * (out - ideal)
             sum_derivative = y_derivative * arctan_derivative(s)
             res = {
