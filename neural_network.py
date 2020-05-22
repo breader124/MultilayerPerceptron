@@ -34,7 +34,17 @@ class NeuralNetwork:
 
         return matrices
 
-    def compute(self, input_data):
+    def predict(self, input_data: List[float]) -> List[float]:
+        output = input_data
+
+        for layer in self.weights:
+            output = output + [1.0]  # bias neuron
+            summed = matrix_dot_vector(layer, output)
+            output = list(map(scaled_atan, summed))
+
+        return output
+
+    def debug_compute(self, input_data: List[float]):
         output_matrix = []
         sum_matrix = []
         for layer in self.weights:
