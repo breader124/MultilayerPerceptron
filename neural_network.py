@@ -1,4 +1,3 @@
-import argparse
 from math import atan, pi, sqrt
 from random import uniform
 from typing import List
@@ -6,15 +5,6 @@ from typing import List
 from math_utils import arctan_derivative, scaled_atan, matrix_dot_vector
 
 Matrix = List[List[float]]
-
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('layers', metavar='N', type=int, nargs='+')
-    parser.add_argument('--inp', type=int)
-
-    args = parser.parse_args()
-    return args.inp, args.layers
 
 
 class NeuralNetwork:
@@ -116,7 +106,3 @@ class NeuralNetwork:
 
     def train(self):
         pass
-
-
-if __name__ == '__main__':
-    print("Hello World :)")
