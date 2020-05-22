@@ -1,6 +1,9 @@
 import argparse
 from math import atan, pi, sqrt
 from random import uniform
+from typing import List
+
+Matrix = List[List[float]]
 
 
 def parse_args():
@@ -12,45 +15,14 @@ def parse_args():
     return args.inp, args.layers
 
 
-def create_layers_matrices(inp, layers):
-    num_of_neurons = [inp] + layers
-
-    matrices = []
-
-    for i in range(len(num_of_neurons) - 1):
-        def init_weight():
-            return uniform(-1 / sqrt(num_of_neurons[i] + 1),
-                           1 / sqrt(num_of_neurons[i] + 1))
-
-        matrix = [
-            [init_weight() for _ in range(num_of_neurons[i] + 1)]
-            for _ in range(num_of_neurons[i + 1])
-        ]
-        matrices.append(matrix)
-
-    return matrices
+def arctan_derivative(x):
+    return 1 / (1 + x ** 2)
 
 
-def compute(input_data, weights):
-    output_matrix = []
-    sum_matrix = []
-    for layer in weights:
-        layer_output = []
-        layer_sums = []
-        for neuron in layer:
-            summed = neuron[-1]
-            for i, weight in enumerate(neuron[:-1]):
-                summed += input_data[i] * weight
-            activated = scaled_atan(summed)
-
-            layer_sums.append(summed)
-            layer_output.append(activated)
-
-        input_data = layer_output
-        sum_matrix.append(layer_sums)
-        output_matrix.append(layer_output)
-
-    return output_matrix, sum_matrix
+def scaled_atan(x):
+    value = atan(x)
+    offset = pi / 2
+    return (value + offset) / pi
 
 
 def matrix_dot_vector(A, b):
@@ -62,66 +34,105 @@ def matrix_dot_vector(A, b):
     return result
 
 
-def scaled_atan(x):
-    value = atan(x)
-    offset = pi / 2
-    return (value + offset) / pi
+class NeuralNetwork:
+    def __init__(
+        self,
+        input_size: int,
+        hidden_layers: List[int],
+        output_size: int
+    ):
+        self.weights = self.create_layers_matrices(
+            [input_size] + hidden_layers + [output_size]
+        )
 
+    def create_layers_matrices(self, layers: List[int]) -> List[Matrix]:
+        matrices = []
 
-def loss_function(given_y, y):
-    return (y - given_y) ** 2
+        for i in range(len(layers) - 1):
+            def init_weight():
+                return uniform(-1 / sqrt(layers[i] + 1),
+                               1 / sqrt(layers[i] + 1))
 
+            matrix = [
+                [init_weight() for _ in range(layers[i] + 1)]
+                for _ in range(layers[i + 1])
+            ]
+            matrices.append(matrix)
 
-def backward_propagation(output_matrix, sum_matrix, weights, given_results,
-                         input_values):
-    derivatives = []
+        return matrices
 
-    last_layer_der = []
-    for out, s, ideal in zip(output_matrix[-1], sum_matrix[-1], given_results):
-        y_derivative = 2 * (out - ideal)
-        sum_derivative = y_derivative * arctan_derivative(s)
-        res = {
-            'y': y_derivative,
-            's': sum_derivative
-        }
-        last_layer_der.append(res)
-    derivatives.append(last_layer_der)
+    def compute(self, input_data):
+        output_matrix = []
+        sum_matrix = []
+        for layer in self.weights:
+            layer_output = []
+            layer_sums = []
+            for neuron in layer:
+                summed = neuron[-1]
+                for i, weight in enumerate(neuron[:-1]):
+                    summed += input_data[i] * weight
+                activated = scaled_atan(summed)
 
-    for layer_index in reversed(range(len(weights) - 1)):
-        new_layer = []
-        for neuron_index in range(len(weights[layer_index])):
-            y_derivative = 0
-            for neuron_next_layer in range(len(weights[layer_index + 1])):
-                neuron_sum = derivatives[-1][neuron_next_layer]['s']
-                weight = weights[layer_index + 1][neuron_next_layer][
-                    neuron_index]
-                y_derivative += neuron_sum * weight
-            sum_derivative = y_derivative * arctan_derivative(
-                sum_matrix[layer_index][neuron_index])
+                layer_sums.append(summed)
+                layer_output.append(activated)
+
+            input_data = layer_output
+            sum_matrix.append(layer_sums)
+            output_matrix.append(layer_output)
+
+        return output_matrix, sum_matrix
+
+    def loss_function(self, given_y, y):
+        return (y - given_y) ** 2
+
+    def backward_propagation(self, output_matrix, sum_matrix,
+                             given_results, input_values):
+        derivatives = []
+
+        last_layer_der = []
+        for out, s, ideal in zip(output_matrix[-1], sum_matrix[-1],
+                                 given_results):
+            y_derivative = 2 * (out - ideal)
+            sum_derivative = y_derivative * arctan_derivative(s)
             res = {
                 'y': y_derivative,
                 's': sum_derivative
             }
-            new_layer.append(res)
-        derivatives.append(new_layer)
+            last_layer_der.append(res)
+        derivatives.append(last_layer_der)
 
-    first_layer_der = []
-    for input_value_index in range(len(input_values)):
-        y_derivative = 0
-        for neuron_first_layer in range(len(weights[1])):
-            y_derivative += derivatives[-1][neuron_first_layer]['s'] * \
-                            weights[1][neuron_first_layer][input_value_index]
-        first_layer_der.append(y_derivative)
+        for layer_index in reversed(range(len(self.weights) - 1)):
+            new_layer = []
+            for neuron_index in range(len(self.weights[layer_index])):
+                y_derivative = 0
+                for neuron_next_layer in range(
+                    len(self.weights[layer_index + 1])):
+                    neuron_sum = derivatives[-1][neuron_next_layer]['s']
+                    weight = self.weights[layer_index + 1][neuron_next_layer][
+                        neuron_index]
+                    y_derivative += neuron_sum * weight
+                sum_derivative = y_derivative * arctan_derivative(
+                    sum_matrix[layer_index][neuron_index])
+                res = {
+                    'y': y_derivative,
+                    's': sum_derivative
+                }
+                new_layer.append(res)
+            derivatives.append(new_layer)
 
-    return derivatives, first_layer_der
+        first_layer_der = []
+        for input_value_index in range(len(input_values)):
+            y_derivative = 0
+            for neuron_first_layer in range(len(self.weights[1])):
+                y_derivative += derivatives[-1][neuron_first_layer]['s'] * \
+                                self.weights[1][neuron_first_layer][
+                                    input_value_index]
+            first_layer_der.append(y_derivative)
 
+        return derivatives, first_layer_der
 
-def arctan_derivative(x):
-    return 1 / (1 + x ** 2)
-
-
-def train():
-    pass
+    def train(self):
+        pass
 
 
 if __name__ == '__main__':
