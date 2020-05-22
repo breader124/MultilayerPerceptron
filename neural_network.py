@@ -1,5 +1,6 @@
 import argparse
-from math import atan, pi
+from math import atan, pi, sqrt
+from random import uniform
 
 
 def parse_args():
@@ -12,26 +13,30 @@ def parse_args():
 
 
 def create_layers_matrices(inp, layers):
-    matrices = list()
-
     num_of_neurons = [inp] + layers
 
+    matrices = []
+
     for i in range(len(num_of_neurons) - 1):
-        matrix = list()
-        row = ([1] * (num_of_neurons[i] + 1))
-        for j in range(num_of_neurons[i + 1]):
-            matrix.append(row)
+        def init_weight():
+            return uniform(-1 / sqrt(num_of_neurons[i] + 1),
+                           1 / sqrt(num_of_neurons[i] + 1))
+
+        matrix = [
+            [init_weight() for _ in range(num_of_neurons[i] + 1)]
+            for _ in range(num_of_neurons[i + 1])
+        ]
         matrices.append(matrix)
 
     return matrices
 
 
 def compute(input_data, weights):
-    output_matrix = list()
-    sum_matrix = list()
+    output_matrix = []
+    sum_matrix = []
     for layer in weights:
-        layer_output = list()
-        layer_sums = list()
+        layer_output = []
+        layer_sums = []
         for neuron in layer:
             summed = neuron[-1]
             for i, weight in enumerate(neuron[:-1]):
@@ -58,10 +63,11 @@ def loss_function(given_y, y):
     return (y - given_y) ** 2
 
 
-def backward_propagation(output_matrix, sum_matrix, weights, given_results, input_values):
-    derivatives = list()
+def backward_propagation(output_matrix, sum_matrix, weights, given_results,
+                         input_values):
+    derivatives = []
 
-    last_layer_der = list()
+    last_layer_der = []
     for out, s, ideal in zip(output_matrix[-1], sum_matrix[-1], given_results):
         y_derivative = 2 * (out - ideal)
         sum_derivative = y_derivative * arctan_derivative(s)
@@ -78,9 +84,11 @@ def backward_propagation(output_matrix, sum_matrix, weights, given_results, inpu
             y_derivative = 0
             for neuron_next_layer in range(len(weights[layer_index + 1])):
                 neuron_sum = derivatives[-1][neuron_next_layer]['s']
-                weight = weights[layer_index + 1][neuron_next_layer][neuron_index]
+                weight = weights[layer_index + 1][neuron_next_layer][
+                    neuron_index]
                 y_derivative += neuron_sum * weight
-            sum_derivative = y_derivative * arctan_derivative(sum_matrix[layer_index][neuron_index])
+            sum_derivative = y_derivative * arctan_derivative(
+                sum_matrix[layer_index][neuron_index])
             res = {
                 'y': y_derivative,
                 's': sum_derivative
@@ -88,18 +96,19 @@ def backward_propagation(output_matrix, sum_matrix, weights, given_results, inpu
             new_layer.append(res)
         derivatives.append(new_layer)
 
-    first_layer_der = list()
+    first_layer_der = []
     for input_value_index in range(len(input_values)):
         y_derivative = 0
         for neuron_first_layer in range(len(weights[1])):
-            y_derivative += derivatives[-1][neuron_first_layer]['s'] * weights[1][neuron_first_layer][input_value_index]
+            y_derivative += derivatives[-1][neuron_first_layer]['s'] * \
+                            weights[1][neuron_first_layer][input_value_index]
         first_layer_der.append(y_derivative)
 
     return derivatives, first_layer_der
 
 
 def arctan_derivative(x):
-    return 1 / (1 + x**2)
+    return 1 / (1 + x ** 2)
 
 
 def train():
