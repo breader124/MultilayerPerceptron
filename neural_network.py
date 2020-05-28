@@ -1,8 +1,7 @@
-from math import atan, pi, sqrt
-from random import uniform
 from typing import List
+import numpy as np
 
-from math_utils import activation_derivative, activation, matrix_dot_vector, \
+from math_utils import activation_derivative, activation, \
     Matrix, Vector
 
 
@@ -21,25 +20,22 @@ class NeuralNetwork:
         matrices = []
 
         for i in range(len(layers) - 1):
-            def init_weight():
-                return uniform(-1 / sqrt(layers[i] + 1),
-                               1 / sqrt(layers[i] + 1))
+            limit = 1 / np.sqrt(layers[i] + 1)
 
-            matrix = [
-                [init_weight() for _ in range(layers[i] + 1)]
-                for _ in range(layers[i + 1])
-            ]
+            matrix = np.random.random_sample((layers[i + 1], layers[i] + 1))
+            matrix = matrix * 2 * limit - limit
             matrices.append(matrix)
 
         return matrices
 
     def predict(self, input_data: Vector) -> Vector:
         output = input_data
+        activate = np.vectorize(activation)
 
         for layer in self.weights:
-            output = output + [1.0]  # bias neuron
-            summed = matrix_dot_vector(layer, output)
-            output = list(map(activation, summed))
+            output = np.append(output, 1.0)  # bias neuron
+            summed = layer.dot(output)
+            output = activate(summed)
 
         return output
 

@@ -1,4 +1,6 @@
 import argparse
+from random import seed
+import numpy as np
 
 from neural_network import NeuralNetwork
 
@@ -13,5 +15,10 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    model = NeuralNetwork(2, [3, 4], 3)
-    print('Hello World :)')
+    seed(42)
+    model = NeuralNetwork(2, [3, 2], 2)
+    in_ = np.array([1, 1])
+    out = model.predict(in_)
+    out2 = model.debug_compute(in_)
+    print(f'{out}')
+    print(out2)

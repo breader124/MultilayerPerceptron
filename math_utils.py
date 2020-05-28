@@ -1,8 +1,7 @@
-from math import exp
-from typing import List
+import numpy as np
 
-Vector = List[float]
-Matrix = List[List[float]]
+Vector = np.ndarray
+Matrix = np.ndarray
 
 
 def activation_derivative(x: float) -> float:
@@ -10,16 +9,7 @@ def activation_derivative(x: float) -> float:
 
 
 def activation(x: float) -> float:
-    return 1 / (1 + exp(-x))
-
-
-def matrix_dot_vector(A: Matrix, b: Vector) -> Vector:
-    result = [
-        sum(x * y for x, y in zip(row, b))
-        for row in A
-    ]
-
-    return result
+    return 1 / (1 + np.exp(-x))
 
 
 def loss_function(y_target: float, y: float) -> float:
