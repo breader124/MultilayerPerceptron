@@ -12,6 +12,7 @@ class NeuralNetwork:
         hidden_layers: List[int],
         output_size: int
     ):
+        self.K = len(hidden_layers) + 1
         self.weights = self.create_layers_matrices(
             [input_size] + hidden_layers + [output_size]
         )
@@ -28,8 +29,8 @@ class NeuralNetwork:
 
         return matrices
 
-    def predict(self, input_data: Vector) -> Vector:
-        output = input_data
+    def predict(self, x: Vector) -> Vector:
+        output = x
         activate = np.vectorize(activation)
 
         for layer in self.weights:
@@ -38,6 +39,59 @@ class NeuralNetwork:
             output = activate(summed)
 
         return output
+
+    def fit(self, x, y, beta=0.01):
+        reps = 500
+        activate = np.vectorize(activation)
+        err_hist = []
+
+        for iteration in range(reps):
+            # feed forward
+            s = [np.array([])]
+            yi = [x]
+            output = x
+            for layer in self.weights:
+                output = np.append(output, 1.0)  # bias neuron
+                summed = layer.dot(output)
+                s.append(summed)
+                output = activate(summed)
+                yi.append(output)
+
+            # backprop
+            err = (output - y) ** 2
+            err_hist.append(err.sum())
+            derr = 2 * (output - y)
+
+            dqdy = [np.array([]) for _ in range(self.K + 1)]
+            dqds = [np.array([]) for _ in range(self.K + 1)]
+
+            dqdy_next = derr
+            dqds_next = dqdy_next * activation_derivative(s[self.K])
+
+            dqdy[self.K] = dqdy_next
+            dqds[self.K] = dqds_next
+
+            for k in reversed(range(1, self.K)):
+                dqdy_now = np.transpose(self.weights[k]).dot(dqds_next)
+                dqdy_now = dqdy_now[:-1]  # drop bias neuron?
+                dqds_now = dqdy_now * activation_derivative(s[k])
+
+                dqdy[k] = dqdy_now
+                dqds[k] = dqds_now
+
+                dqdy_next, dqds_next = dqdy_now, dqds_now
+
+            # derivatives in respect to weights
+            dqdw = [np.array([]) for _ in range(self.K + 1)]
+            for k in range(1, self.K + 1):
+                dqdw[k] = np.outer(dqds[k], np.transpose(yi[k - 1]))
+
+            # update weights
+            for k in range(1, self.K):
+                # TODO bias neuron
+                self.weights[k][:, :-1] = self.weights[k][:, :-1] - beta * dqdw[k + 1]
+
+        return err_hist
 
     def debug_compute(self, input_data: Vector):
         output_matrix = []
