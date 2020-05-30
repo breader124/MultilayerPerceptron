@@ -40,51 +40,61 @@ class NeuralNetwork:
 
         return output
 
-    def fit(self, x, y, beta=0.01):
-        reps = 500
+    def fit(self, x, y, reps=1, beta=0.01):
         activate = np.vectorize(activation)
         err_hist = []
+        dqdw = [None for _ in range(self.K + 1)]
 
         for iteration in range(reps):
-            # feed forward
-            s = [np.array([])]
-            yi = [x]
-            output = x
-            for layer in self.weights:
-                output = np.append(output, 1.0)  # bias neuron
-                summed = layer.dot(output)
-                s.append(summed)
-                output = activate(summed)
-                yi.append(output)
+            sub_err = []
+            for i in range(len(y)):
+                yk = y[i]
+                xk = x[i, :]
+                # feed forward
+                s = [np.array([])]
+                yi = [xk]
+                output = xk
+                for layer in self.weights:
+                    output = np.append(output, 1.0)  # bias neuron
+                    summed = layer.dot(output)
+                    s.append(summed)
+                    output = activate(summed)
+                    yi.append(output)
 
-            # backprop
-            err = (output - y) ** 2
-            err_hist.append(err.sum())
-            derr = 2 * (output - y)
+                # backprop
+                err = (output - yk) ** 2
+                sub_err.append(err.sum())
+                derr = 2 * (output - yk)
 
-            dqdy = [np.array([]) for _ in range(self.K + 1)]
-            dqds = [np.array([]) for _ in range(self.K + 1)]
+                dqdy = [np.array([]) for _ in range(self.K + 1)]
+                dqds = [np.array([]) for _ in range(self.K + 1)]
 
-            dqdy_next = derr
-            dqds_next = dqdy_next * activation_derivative(s[self.K])
+                dqdy_next = derr
+                dqds_next = dqdy_next * activation_derivative(s[self.K])
 
-            dqdy[self.K] = dqdy_next
-            dqds[self.K] = dqds_next
+                dqdy[self.K] = dqdy_next
+                dqds[self.K] = dqds_next
 
-            for k in reversed(range(1, self.K)):
-                dqdy_now = np.transpose(self.weights[k]).dot(dqds_next)
-                dqdy_now = dqdy_now[:-1]  # drop bias neuron?
-                dqds_now = dqdy_now * activation_derivative(s[k])
+                for k in reversed(range(1, self.K)):
+                    dqdy_now = np.transpose(self.weights[k]).dot(dqds_next)
+                    dqdy_now = dqdy_now[:-1]  # drop bias neuron?
+                    dqds_now = dqdy_now * activation_derivative(s[k])
 
-                dqdy[k] = dqdy_now
-                dqds[k] = dqds_now
+                    dqdy[k] = dqdy_now
+                    dqds[k] = dqds_now
 
-                dqdy_next, dqds_next = dqdy_now, dqds_now
+                    dqdy_next, dqds_next = dqdy_now, dqds_now
 
-            # derivatives in respect to weights
-            dqdw = [np.array([]) for _ in range(self.K + 1)]
-            for k in range(1, self.K + 1):
-                dqdw[k] = np.outer(dqds[k], np.transpose(yi[k - 1]))
+                # derivatives in respect to weights
+                for k in range(1, self.K + 1):
+                    if dqdw[k] is None:
+                        dqdw[k] = np.outer(dqds[k], np.transpose(yi[k - 1]))
+                    else:
+                        dqdw[k] += np.outer(dqds[k], np.transpose(yi[k - 1]))
+
+            err_hist.append(sum(sub_err) / len(y))
+            if (iteration + 1) % 100 == 0:
+                print(f'Iteration {iteration + 1}: error {err_hist[-1]}')
 
             # update weights
             for k in range(1, self.K):
