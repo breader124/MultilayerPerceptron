@@ -20,7 +20,8 @@ def parse_args():
 
 
 def clean_data(X, y):
-    # TODO normalize X, change y from {0,1,2} to {(0,0,1), (0,1,0), (1,0,0)}
+    # TODO normalize X
+    X /= np.max(X, axis=0)
     y = np.array(list(
         [int(tmp == 0), int(tmp == 1), int(tmp == 2)] for tmp in y
     ))
@@ -28,21 +29,25 @@ def clean_data(X, y):
 
 
 if __name__ == '__main__':
-    seed(42)
-    np.random.seed(42)
+    seed(420)
+    np.random.seed(420)
 
     X, y_raw = datasets.load_iris(return_X_y=True)
     X, y = clean_data(X, y_raw)
+
+    # X, y = X[list(range(10)) + list(range(120, 130))], y[list(range(10)) + list(range(120, 130))]
+
     inputs = X.shape[1]
     outputs = y.shape[1]
 
-    model = NeuralNetwork(inputs, [7], outputs)
+    model = NeuralNetwork(inputs, [40, 40], outputs)
     in_ = X[0, :]
     exp = y[0]
     out = model.predict(in_)
     print(out)
 
-    errs = model.fit(X, y, reps=500, beta=0.1)
+    # errs = model.fit(X, y, reps=500, beta=0.5)
+    errs = model.batch_fit(X, y, batch=5, reps=1000, beta=0.001)
     plt.plot(errs)
     plt.legend(['Error'])
     plt.show()
@@ -50,7 +55,5 @@ if __name__ == '__main__':
     out = model.predict(in_)
     print(out)
 
-    alle = np.array([model.predict(gle) for gle in X])
-    maxed = np.argmax(alle, axis=1)
-    errs = [a != b for a, b in zip(y_raw, maxed)]
-    print(f'Samples classified to wrong class: {sum(errs)}')
+    acc = model.eval(X, y)
+    print(f'Samples classified to correct class: {int(acc * len(y))}')
