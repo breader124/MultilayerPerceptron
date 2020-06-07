@@ -75,8 +75,9 @@ class NeuralNetwork:
             delta = output - yk
             dqdw[-1] += np.outer(delta, s[-1])
             for k in reversed(range(1, len(dqdw))):
-                delta = self.weights[k] * delta * activation_derivative(s[k])
-                dqdw[k - 1] += np.outer(delta[:, :-1], s[k - 1])
+                delta = self.weights[k].T.dot(delta) * activation_derivative(s[k])
+                delta = delta[:-1]
+                dqdw[k - 1] += np.outer(delta, s[k - 1])
 
         dqdw = [dqdw[i] / len(x) for i in range(len(dqdw))]
         # update weights

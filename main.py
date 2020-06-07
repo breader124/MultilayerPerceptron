@@ -48,9 +48,9 @@ if __name__ == '__main__':
     print(out)
 
     # errs = model.fit(X, y, reps=500, beta=0.5)
-    errs = model.batch_fit(X, y, batch=15, reps=500, beta=0.005)
+    errs = model.batch_fit(X, y, batch=15, reps=2000, beta=0.005)
     plt.plot(errs)
-    plt.legend(['Error'])
+    plt.legend(['Loss'])
     plt.show()
 
     out = model.predict(in_)
