@@ -5,7 +5,7 @@ Matrix = np.ndarray
 
 
 def activation_derivative(x: float) -> float:
-    return activation(x) * (1 - activation(x))
+    return x * (1.0 - x)
 
 
 def activation(x: float) -> float:

@@ -21,7 +21,8 @@ def parse_args():
 
 def clean_data(X, y):
     # TODO normalize X
-    X /= np.max(X, axis=0)
+    X = (X - np.min(X, axis=0)) / (np.max(X, axis=0) - np.min(X, axis=0))
+    X = X * 2 - 1
     y = np.array(list(
         [int(tmp == 0), int(tmp == 1), int(tmp == 2)] for tmp in y
     ))
@@ -29,8 +30,8 @@ def clean_data(X, y):
 
 
 if __name__ == '__main__':
-    seed(420)
-    np.random.seed(420)
+    seed(42)
+    np.random.seed(42)
 
     X, y_raw = datasets.load_iris(return_X_y=True)
     X, y = clean_data(X, y_raw)
@@ -40,14 +41,14 @@ if __name__ == '__main__':
     inputs = X.shape[1]
     outputs = y.shape[1]
 
-    model = NeuralNetwork(inputs, [40, 40], outputs)
+    model = NeuralNetwork(inputs, [20, 20], outputs)
     in_ = X[0, :]
     exp = y[0]
     out = model.predict(in_)
     print(out)
 
     # errs = model.fit(X, y, reps=500, beta=0.5)
-    errs = model.batch_fit(X, y, batch=5, reps=1000, beta=0.001)
+    errs = model.batch_fit(X, y, batch=15, reps=500, beta=0.005)
     plt.plot(errs)
     plt.legend(['Error'])
     plt.show()
