@@ -89,26 +89,12 @@ class NeuralNetwork:
         optim = 'sgd'
         if optim == 'sgd':
             self._sgd(beta, dqdw)
-        elif optim == 'lm':
-            self._levenberg(beta, dqdw)
         elif optim == 'adam':
             self._adam(beta, dqdw)
 
     def _sgd(self, beta, dqdw):
         for k in range(len(self.weights)):
             self.weights[k] -= beta * dqdw[k]
-
-    def _levenberg(self, beta, dqdw):
-        raise Exception('Not implemented')
-        th = np.array([])
-        for k in range(0, self.K):
-            vectorized = self.weights[k].reshape((1, self.weights[k].size))
-            th = np.append(th, vectorized)
-
-        dth = np.array([])
-        for k in range(0, self.K):
-            vectorized = dqdw[k + 1].reshape((1, dqdw[k + 1].size))
-            dth = np.append(dth, vectorized)
 
     def _adam(self, beta, dqdw):
         eps = 1e-7
@@ -149,9 +135,7 @@ class NeuralNetwork:
                 err += self.fit(Xt, yt, beta=beta)
 
             err_hist.append(err / parts)
-            # err_hist.append(self.eval(X, y))
             if (iteration + 1) % 100 == 0:
-                # beta = beta * 0.7
                 print(
                     f'Iteration {iteration + 1}: loss: {err_hist[-1]}, accuracy: {self.eval(X, y):.4f}')
 
