@@ -1,21 +1,38 @@
 from typing import List
 import numpy as np
 
-from math_utils import activation_derivative, activation, \
-    Matrix, Vector
+from math_utils import activation_derivative, activation, Matrix, Vector
+
+
+def create_layers_matrices(layers: List[int]) -> List[Matrix]:
+    matrices = []
+
+    for i in range(len(layers) - 1):
+        limit = 1 / np.sqrt(layers[i] + 1)
+
+        if i < len(layers) - 2:
+            matrix = np.random.random_sample((layers[i + 1], layers[i] + 1))
+        else:
+            matrix = np.random.random_sample((layers[i + 1], layers[i] + 1))
+
+        matrix = matrix * 2 * limit - limit
+        matrices.append(matrix)
+
+    return matrices
 
 
 class NeuralNetwork:
     def __init__(
-        self,
-        input_size: int,
-        hidden_layers: List[int],
-        output_size: int
+            self,
+            input_size: int,
+            hidden_layers: List[int],
+            output_size: int
     ):
         self.K = len(hidden_layers) + 1
-        self.weights = self.create_layers_matrices(
+        self.weights = create_layers_matrices(
             [input_size] + hidden_layers + [output_size]
         )
+
         self.m = [
             np.zeros(layer.shape) for layer in self.weights
         ]
@@ -23,23 +40,6 @@ class NeuralNetwork:
             np.zeros(layer.shape) for layer in self.weights
         ]
         self.adam_t = 0
-
-    def create_layers_matrices(self, layers: List[int]) -> List[Matrix]:
-        matrices = []
-
-        for i in range(len(layers) - 1):
-            if i < len(layers) - 2:
-                limit = 1 / np.sqrt(layers[i] + 1)
-                matrix = np.random.random_sample(
-                    (layers[i + 1], layers[i] + 1))
-                matrix = matrix * 2 * limit - limit
-            else:
-                limit = 1 / np.sqrt(layers[i] + 1)
-                matrix = np.random.random_sample((layers[i + 1], layers[i] + 1))
-                matrix = matrix * 2 * limit - limit
-            matrices.append(matrix)
-
-        return matrices
 
     def predict(self, x: Vector) -> Vector:
         output = x
@@ -58,20 +58,12 @@ class NeuralNetwork:
         for i in range(len(y)):
             yk = y[i]
             xk = x[i, :]
-            # feed forward
-            output = xk
-            s = []
-            for layer in self.weights:
-                output = np.append(output, 1.0)  # bias neuron
-                s.append(output)
 
-                summed = layer.dot(output)
-                output = activation(summed)
+            output, s = self.feed_forward(xk)
 
-            # backprop
+            # backward propagation
             err = np.mean(np.square(output - yk))
             sub_err.append(err)
-
             delta = output - yk
             dqdw[-1] += np.outer(delta, s[-1])
             for k in reversed(range(1, len(dqdw))):
@@ -80,10 +72,19 @@ class NeuralNetwork:
                 dqdw[k - 1] += np.outer(delta, s[k - 1])
 
         dqdw = [dqdw[i] / len(x) for i in range(len(dqdw))]
-        # update weights
         self._update_weights(beta, dqdw)
 
         return sum(sub_err) / len(sub_err)
+
+    def feed_forward(self, xk):
+        output = xk
+        s = []
+        for layer in self.weights:
+            output = np.append(output, 1.0)  # bias neuron
+            s.append(output)
+            summed = layer.dot(output)
+            output = activation(summed)
+        return output, s
 
     def _update_weights(self, beta, dqdw):
         optim = 'sgd'
@@ -136,8 +137,7 @@ class NeuralNetwork:
 
             err_hist.append(err / parts)
             if (iteration + 1) % 100 == 0:
-                print(
-                    f'Iteration {iteration + 1}: loss: {err_hist[-1]}, accuracy: {self.eval(X, y):.4f}')
+                print(f'Iteration {iteration + 1}: loss: {err_hist[-1]}, accuracy: {self.eval(X, y):.4f}')
 
         return err_hist
 

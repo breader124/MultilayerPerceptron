@@ -21,7 +21,6 @@ def parse_args():
 
 
 def clean_data(X, y):
-    # TODO normalize X
     X = (X - np.min(X, axis=0)) / (np.max(X, axis=0) - np.min(X, axis=0))
     X = X * 2 - 1
     y = np.array(list(
