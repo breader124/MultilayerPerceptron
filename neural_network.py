@@ -21,6 +21,26 @@ def create_layers_matrices(layers: List[int]) -> List[Matrix]:
     return matrices
 
 
+def cross_validation(X, y, model, k) -> float:
+    z = list(zip(X, y))
+    np.random.shuffle(z)
+    shuffled = np.array(z)
+
+    batches = np.array_split(shuffled, k)
+    errors = list()
+    for batch in batches:
+        part_of_x = np.stack(batch[:, 0])
+        part_of_y = np.stack(batch[:, 1])
+
+        batch_fit_size = int(part_of_x.shape[0] / 5)
+        result_error = model.batch_fit(
+            part_of_x, part_of_y, batch=int(batch_fit_size), reps=1000, beta=0.001
+        )[-1]
+        errors.append(result_error)
+
+    return np.mean(errors)
+
+
 class NeuralNetwork:
     def __init__(
             self,
@@ -87,7 +107,7 @@ class NeuralNetwork:
         return output, s
 
     def _update_weights(self, beta, dqdw):
-        optim = 'sgd'
+        optim = 'adam'
         if optim == 'sgd':
             self._sgd(beta, dqdw)
         elif optim == 'adam':
