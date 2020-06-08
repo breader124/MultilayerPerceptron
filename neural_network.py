@@ -21,37 +21,58 @@ def create_layers_matrices(layers: List[int]) -> List[Matrix]:
     return matrices
 
 
-def cross_validation(X, y, model, k) -> float:
+def cross_validation(X, y, neural_network_struct, k):
     z = list(zip(X, y))
     np.random.shuffle(z)
-    shuffled = np.array(z)
+    full_array = np.array(z)
+    shuffled = full_array[::2]
 
     batches = np.array_split(shuffled, k)
     errors = list()
-    for batch in batches:
-        part_of_x = np.stack(batch[:, 0])
-        part_of_y = np.stack(batch[:, 1])
+    for validation_set in batches:
+        model = NeuralNetwork(neural_network_struct)
 
-        batch_fit_size = int(part_of_x.shape[0] / 5)
-        result_error = model.batch_fit(
-            part_of_x, part_of_y, batch=int(batch_fit_size), reps=1000, beta=0.001
-        )[-1]
-        errors.append(result_error)
+        training_set = [x for x in batches if x != validation_set]
+        training_set = np.vstack(training_set)
 
-    return np.mean(errors)
+        training_set_err, val_set_err = model.batch_fit(
+            training_set, validation_set, batch=5, beta=0.001
+        )
+        print(val_set_err[-1])
+        errors.append(val_set_err[-1])
+
+    model = NeuralNetwork(neural_network_struct)
+    training_set = full_array[::2]
+    validation_set = full_array[1::2]
+    training_set_err, val_set_err = model.batch_fit(
+        training_set, validation_set, batch=5, beta=0.001
+    )
+
+    return model, np.mean(errors), training_set_err, val_set_err
 
 
-class NeuralNetwork:
+class NeuralNetworkStructure:
     def __init__(
             self,
             input_size: int,
             hidden_layers: List[int],
             output_size: int
     ):
-        self.K = len(hidden_layers) + 1
-        self.weights = create_layers_matrices(
-            [input_size] + hidden_layers + [output_size]
-        )
+        self.input_size = input_size
+        self.hidden_layers = hidden_layers
+        self.output_size = output_size
+
+    def full_structure(self):
+        return [self.input_size] + self.hidden_layers + [self.output_size]
+
+
+class NeuralNetwork:
+    def __init__(
+            self,
+            structure: NeuralNetworkStructure
+    ):
+        self.K = len(structure.hidden_layers) + 1
+        self.weights = create_layers_matrices(structure.full_structure())
 
         self.m = [
             np.zeros(layer.shape) for layer in self.weights
@@ -95,6 +116,17 @@ class NeuralNetwork:
         self._update_weights(beta, dqdw)
 
         return sum(sub_err) / len(sub_err)
+
+    def error(self, x, y):
+        errors = []
+        for i in range(len(y)):
+            xk = x[i, :]
+            yk = y[i]
+            output, _ = self.feed_forward(xk)
+            err = np.mean(np.square(output - yk))
+            errors.append(err)
+
+        return np.mean(errors)
 
     def feed_forward(self, xk):
         output = xk
@@ -140,12 +172,18 @@ class NeuralNetwork:
 
         self.adam_t += 1
 
-    def batch_fit(self, X, y, batch=10, reps=100, beta=0.1):
+    def batch_fit(self, training_set, validation_set, batch=10, beta=0.1):
+        X = np.stack(training_set[:, 0])
+        y = np.stack(training_set[:, 1])
+        X_val = np.stack(validation_set[:, 0])
+        y_val = np.stack(validation_set[:, 1])
+
         self.adam_t = 1
         err_hist = []
+        val_err_hist = []
         parts = int(np.ceil(len(y) / batch))
 
-        for iteration in range(reps):
+        while True:
             p = np.random.permutation(len(y))
             Xs, ys = X[p], y[p]
             err = 0
@@ -156,10 +194,16 @@ class NeuralNetwork:
                 err += self.fit(Xt, yt, beta=beta)
 
             err_hist.append(err / parts)
-            if (iteration + 1) % 100 == 0:
-                print(f'Iteration {iteration + 1}: loss: {err_hist[-1]}, accuracy: {self.eval(X, y):.4f}')
+            val_err_hist.append(self.error(X_val, y_val))
+            if len(val_err_hist) > 30:
+                if self.check_increasing(val_err_hist[-30:-1]):
+                    break
 
-        return err_hist
+        return err_hist, val_err_hist
+
+    def check_increasing(self, hist_err) -> bool:
+        mean = np.mean(hist_err)
+        return hist_err[-1] > mean
 
     def eval(self, X, y):
         alle = np.array([self.predict(gle) for gle in X])

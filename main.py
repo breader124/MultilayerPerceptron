@@ -9,7 +9,7 @@ from neural_network import cross_validation
 
 sns.set()
 
-from neural_network import NeuralNetwork
+from neural_network import NeuralNetworkStructure
 
 
 def parse_args():
@@ -40,22 +40,17 @@ if __name__ == '__main__':
     inputs = X.shape[1]
     outputs = y.shape[1]
 
-    model = NeuralNetwork(inputs, [1], outputs)
+    model_structure = NeuralNetworkStructure(inputs, [50, 50], outputs)
+    model, mean_error, training_errs, val_errs = cross_validation(X, y, model_structure, 3)
+    print(f'Mean model loss: {mean_error}')
 
-    # mean_error = cross_validation(X, y, model, 3)
-    # print(f'Mean model loss: {mean_error}')
-
-    in_ = X[0, :]
-    out = model.predict(in_)
-    print(out)
-
-    errs = model.batch_fit(X, y, batch=15, reps=2000, beta=0.001)
-    plt.plot(errs)
-    plt.legend(['Loss'])
+    plt.plot(training_errs)
+    plt.plot(val_errs)
+    plt.legend(['Loss', 'Val Loss'])
     plt.show()
 
-    out = model.predict(in_)
-    print(out)
+    # out = model.predict(in_)
+    # print(out)
 
     acc = model.eval(X, y)
     print(f'Samples classified to correct class: {int(acc * len(y))}')

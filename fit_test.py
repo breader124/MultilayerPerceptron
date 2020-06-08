@@ -23,7 +23,7 @@ if __name__ == '__main__':
     out = model.predict(in_)
     print(out)
 
-    errs = model.batch_fit(X, y, batch=4, reps=3000, beta=0.5)
+    errs = model.batch_fit(X, y, batch=4, beta=0.5)
     plt.plot(errs)
     plt.legend(['Error'])
     plt.show()
