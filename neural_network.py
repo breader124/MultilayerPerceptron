@@ -24,31 +24,32 @@ def create_layers_matrices(layers: List[int]) -> List[Matrix]:
 def cross_validation(X, y, neural_network_struct, k):
     z = list(zip(X, y))
     np.random.shuffle(z)
-    full_array = np.array(z)
-    shuffled = full_array[::2]
+    shuffled = np.array(z)
 
     batches = np.array_split(shuffled, k)
-    errors = list()
+    batches_repeats = list()
     for validation_set in batches:
-        model = NeuralNetwork(neural_network_struct)
-
         training_set = [x for x in batches if x != validation_set]
         training_set = np.vstack(training_set)
 
-        training_set_err, val_set_err = model.batch_fit(
-            training_set, validation_set, batch=5, beta=0.001
-        )
-        print(val_set_err[-1])
-        errors.append(val_set_err[-1])
+        model = NeuralNetwork(neural_network_struct)
+        repeats = model.early_stop_fit(training_set, validation_set)
+        batches_repeats.append(repeats)
 
     model = NeuralNetwork(neural_network_struct)
-    training_set = full_array[::2]
-    validation_set = full_array[1::2]
-    training_set_err, val_set_err = model.batch_fit(
-        training_set, validation_set, batch=5, beta=0.001
-    )
+    mean_repeats = int(np.mean(batches_repeats))
+    errs = model.fixed_repeats_fit(shuffled, repeats=mean_repeats)
 
-    return model, np.mean(errors), training_set_err, val_set_err
+    return model, errs
+
+
+def split_dataset(dataset):
+    return np.stack(dataset[:, 0]), np.stack(dataset[:, 1])
+
+
+def check_increasing(hist_err):
+    mean = np.mean(hist_err)
+    return hist_err[-1] > mean
 
 
 class NeuralNetworkStructure:
@@ -92,6 +93,53 @@ class NeuralNetwork:
 
         return output
 
+    def early_stop_fit(self, training_set, validation_set, batch=10, beta=0.001):
+        X, y = split_dataset(training_set)
+        X_val, y_val = split_dataset(validation_set)
+        self.adam_t = 1
+
+        err_hist = []
+        val_err_hist = []
+        parts = int(np.ceil(len(y) / batch))
+
+        repeats = 1
+        while True:
+            err = self.single_batch_fit(X, y, parts, batch, beta)
+            err_hist.append(err / parts)
+            val_err_hist.append(self.error(X_val, y_val))
+
+            if len(val_err_hist) > 30:
+                if check_increasing(val_err_hist[-30:-1]):
+                    break
+            repeats = repeats + 1
+
+        return repeats
+
+    def fixed_repeats_fit(self, dataset, repeats, batch=10, beta=0.001):
+        X, y = split_dataset(dataset)
+        self.adam_t = 1
+
+        err_hist = []
+        parts = int(np.ceil(len(y) / batch))
+
+        for i in range(repeats):
+            err = self.single_batch_fit(X, y, parts, batch, beta)
+            err_hist.append(err / parts)
+
+        return err_hist
+
+    def single_batch_fit(self, X, y, parts, batch, beta):
+        p = np.random.permutation(len(y))
+        Xs, ys = X[p], y[p]
+        err = 0
+        for i in range(parts):
+            start = batch * i
+            stop = min(start + batch, len(y))
+            Xt, yt = Xs[start:stop], ys[start:stop]
+            err += self.fit(Xt, yt, beta=beta)
+
+        return err
+
     def fit(self, x, y, beta=0.01):
         dqdw = [np.zeros(layer.shape) for layer in self.weights]
         sub_err = []
@@ -117,6 +165,16 @@ class NeuralNetwork:
 
         return sum(sub_err) / len(sub_err)
 
+    def feed_forward(self, xk):
+        output = xk
+        s = []
+        for layer in self.weights:
+            output = np.append(output, 1.0)  # bias neuron
+            s.append(output)
+            summed = layer.dot(output)
+            output = activation(summed)
+        return output, s
+
     def error(self, x, y):
         errors = []
         for i in range(len(y)):
@@ -128,15 +186,12 @@ class NeuralNetwork:
 
         return np.mean(errors)
 
-    def feed_forward(self, xk):
-        output = xk
-        s = []
-        for layer in self.weights:
-            output = np.append(output, 1.0)  # bias neuron
-            s.append(output)
-            summed = layer.dot(output)
-            output = activation(summed)
-        return output, s
+    def eval(self, X, y):
+        alle = np.array([self.predict(gle) for gle in X])
+        maxed = np.argmax(alle, axis=1)
+        y_raw = np.argmax(y, axis=1)
+        errs = [a != b for a, b in zip(y_raw, maxed)]
+        return 1 - (sum(errs) / len(y))
 
     def _update_weights(self, beta, dqdw):
         optim = 'adam'
@@ -171,43 +226,3 @@ class NeuralNetwork:
         ]
 
         self.adam_t += 1
-
-    def batch_fit(self, training_set, validation_set, batch=10, beta=0.1):
-        X = np.stack(training_set[:, 0])
-        y = np.stack(training_set[:, 1])
-        X_val = np.stack(validation_set[:, 0])
-        y_val = np.stack(validation_set[:, 1])
-
-        self.adam_t = 1
-        err_hist = []
-        val_err_hist = []
-        parts = int(np.ceil(len(y) / batch))
-
-        while True:
-            p = np.random.permutation(len(y))
-            Xs, ys = X[p], y[p]
-            err = 0
-            for i in range(parts):
-                start = batch * i
-                stop = min(start + batch, len(y))
-                Xt, yt = Xs[start:stop], ys[start:stop]
-                err += self.fit(Xt, yt, beta=beta)
-
-            err_hist.append(err / parts)
-            val_err_hist.append(self.error(X_val, y_val))
-            if len(val_err_hist) > 30:
-                if self.check_increasing(val_err_hist[-30:-1]):
-                    break
-
-        return err_hist, val_err_hist
-
-    def check_increasing(self, hist_err) -> bool:
-        mean = np.mean(hist_err)
-        return hist_err[-1] > mean
-
-    def eval(self, X, y):
-        alle = np.array([self.predict(gle) for gle in X])
-        maxed = np.argmax(alle, axis=1)
-        y_raw = np.argmax(y, axis=1)
-        errs = [a != b for a, b in zip(y_raw, maxed)]
-        return 1 - (sum(errs) / len(y))

@@ -3,13 +3,12 @@ import numpy as np
 import seaborn as sns
 
 from random import seed
-from sklearn import datasets
 from matplotlib import pyplot as plt
+from sklearn import datasets
+from neural_network import NeuralNetworkStructure
 from neural_network import cross_validation
 
 sns.set()
-
-from neural_network import NeuralNetworkStructure
 
 
 def parse_args():
@@ -40,17 +39,14 @@ if __name__ == '__main__':
     inputs = X.shape[1]
     outputs = y.shape[1]
 
-    model_structure = NeuralNetworkStructure(inputs, [50, 50], outputs)
-    model, mean_error, training_errs, val_errs = cross_validation(X, y, model_structure, 3)
+    model_structure = NeuralNetworkStructure(inputs, [20], outputs)
+    model, errors = cross_validation(X, y, model_structure, 3)
+    mean_error = np.mean(errors)
     print(f'Mean model loss: {mean_error}')
 
-    plt.plot(training_errs)
-    plt.plot(val_errs)
-    plt.legend(['Loss', 'Val Loss'])
+    plt.plot(errors)
+    plt.legend(['Loss'])
     plt.show()
-
-    # out = model.predict(in_)
-    # print(out)
 
     acc = model.eval(X, y)
     print(f'Samples classified to correct class: {int(acc * len(y))}')
