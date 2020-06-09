@@ -13,11 +13,13 @@ sns.set()
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('layers', metavar='N', type=int, nargs='+')
-    parser.add_argument('--inp', type=int)
+    parser.add_argument('layers', type=int)
+    parser.add_argument('min', type=int)
+    parser.add_argument('max', type=int)
+    parser.add_argument('step', type=int)
 
     args = parser.parse_args()
-    return args.inp, args.layers
+    return args.layers, args.min, args.max, args.step
 
 
 def clean_data(X, y):
@@ -30,6 +32,8 @@ def clean_data(X, y):
 
 
 if __name__ == '__main__':
+    layers_num, min_neurons, max_neurons, step = parse_args()
+
     seed(42)
     np.random.seed(42)
 
@@ -39,14 +43,16 @@ if __name__ == '__main__':
     inputs = X.shape[1]
     outputs = y.shape[1]
 
-    model_structure = NeuralNetworkStructure(inputs, [20], outputs)
-    model, errors = cross_validation(X, y, model_structure, 3)
-    mean_error = np.mean(errors)
-    print(f'Mean model loss: {mean_error}')
+    legend = []
+    for neurons_num in range(min_neurons, max_neurons, step):
+        hidden_layers = [neurons_num] * layers_num
+        model_structure = NeuralNetworkStructure(inputs, hidden_layers, outputs)
+        model, errors = cross_validation(X, y, model_structure, 5)
 
-    plt.plot(errors)
-    plt.legend(['Loss'])
+        legend = legend + [neurons_num]
+        plt.plot(errors)
+
+        print(f'Finished for {neurons_num} neurons')
+
+    plt.legend(legend)
     plt.show()
-
-    acc = model.eval(X, y)
-    print(f'Samples classified to correct class: {int(acc * len(y))}')
