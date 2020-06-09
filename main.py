@@ -17,9 +17,11 @@ def parse_args():
     parser.add_argument('min', type=int)
     parser.add_argument('max', type=int)
     parser.add_argument('step', type=int)
+    parser.add_argument('--algorithm', type=str, default='adam')
+    parser.add_argument('--beta', type=float, default=0.001, help='Learning rate')
 
     args = parser.parse_args()
-    return args.layers, args.min, args.max, args.step
+    return args.layers, args.min, args.max, args.step, args.algorithm, args.beta
 
 
 def clean_data(X, y):
@@ -32,7 +34,7 @@ def clean_data(X, y):
 
 
 if __name__ == '__main__':
-    layers_num, min_neurons, max_neurons, step = parse_args()
+    layers_num, min_neurons, max_neurons, step, algorithm, beta = parse_args()
 
     seed(42)
     np.random.seed(42)
@@ -43,11 +45,12 @@ if __name__ == '__main__':
     inputs = X.shape[1]
     outputs = y.shape[1]
 
+    k_fold = 5
     legend = []
-    for neurons_num in range(min_neurons, max_neurons, step):
+    for neurons_num in range(min_neurons, max_neurons + 1, step):
         hidden_layers = [neurons_num] * layers_num
         model_structure = NeuralNetworkStructure(inputs, hidden_layers, outputs)
-        model, errors = cross_validation(X, y, model_structure, 5)
+        model, errors = cross_validation(X, y, model_structure, k_fold, algorithm, beta)
 
         legend = legend + [neurons_num]
         plt.plot(errors)

@@ -4,13 +4,9 @@ Vector = np.ndarray
 Matrix = np.ndarray
 
 
-def activation_derivative(x: float) -> float:
+def activation_derivative(x):
     return x * (1.0 - x)
 
 
-def activation(x: float) -> float:
+def activation(x):
     return 1 / (1 + np.exp(-x))
-
-
-def loss_function(y_target: float, y: float) -> float:
-    return (y - y_target) ** 2

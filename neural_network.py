@@ -21,7 +21,7 @@ def create_layers_matrices(layers: List[int]) -> List[Matrix]:
     return matrices
 
 
-def cross_validation(X, y, neural_network_struct, k):
+def cross_validation(X, y, neural_network_struct, k, algorithm, beta):
     z = list(zip(X, y))
     np.random.shuffle(z)
     shuffled = np.array(z)
@@ -33,12 +33,12 @@ def cross_validation(X, y, neural_network_struct, k):
         training_set = np.vstack(training_set)
 
         model = NeuralNetwork(neural_network_struct)
-        repeats = model.early_stop_fit(training_set, validation_set)
+        repeats = model.early_stop_fit(training_set, validation_set, algorithm=algorithm, beta=beta)
         batches_repeats.append(repeats)
 
     model = NeuralNetwork(neural_network_struct)
     mean_repeats = int(np.mean(batches_repeats))
-    errs = model.fixed_repeats_fit(shuffled, repeats=mean_repeats)
+    errs = model.fixed_repeats_fit(shuffled, algorithm=algorithm, repeats=mean_repeats)
 
     return model, errs
 
@@ -93,7 +93,7 @@ class NeuralNetwork:
 
         return output
 
-    def early_stop_fit(self, training_set, validation_set, batch=10, beta=0.001):
+    def early_stop_fit(self, training_set, validation_set, batch=10, algorithm='adam', beta=0.001):
         X, y = split_dataset(training_set)
         X_val, y_val = split_dataset(validation_set)
         self.adam_t = 1
@@ -104,7 +104,7 @@ class NeuralNetwork:
 
         repeats = 1
         while True:
-            err = self.single_batch_fit(X, y, parts, batch, beta)
+            err = self.single_batch_fit(X, y, parts, batch, algorithm, beta)
             err_hist.append(err / parts)
             val_err_hist.append(self.error(X_val, y_val))
 
@@ -115,7 +115,7 @@ class NeuralNetwork:
 
         return repeats
 
-    def fixed_repeats_fit(self, dataset, repeats, batch=10, beta=0.001):
+    def fixed_repeats_fit(self, dataset, repeats, algorithm, batch=10, beta=0.001):
         X, y = split_dataset(dataset)
         self.adam_t = 1
 
@@ -123,12 +123,12 @@ class NeuralNetwork:
         parts = int(np.ceil(len(y) / batch))
 
         for i in range(repeats):
-            err = self.single_batch_fit(X, y, parts, batch, beta)
+            err = self.single_batch_fit(X, y, parts, batch, algorithm, beta)
             err_hist.append(err / parts)
 
         return err_hist
 
-    def single_batch_fit(self, X, y, parts, batch, beta):
+    def single_batch_fit(self, X, y, parts, batch, algorithm, beta):
         p = np.random.permutation(len(y))
         Xs, ys = X[p], y[p]
         err = 0
@@ -136,11 +136,11 @@ class NeuralNetwork:
             start = batch * i
             stop = min(start + batch, len(y))
             Xt, yt = Xs[start:stop], ys[start:stop]
-            err += self.fit(Xt, yt, beta=beta)
+            err += self.fit(Xt, yt, algorithm=algorithm, beta=beta)
 
         return err
 
-    def fit(self, x, y, beta=0.01):
+    def fit(self, x, y, algorithm='adam', beta=0.01):
         dqdw = [np.zeros(layer.shape) for layer in self.weights]
         sub_err = []
 
@@ -161,7 +161,7 @@ class NeuralNetwork:
                 dqdw[k - 1] += np.outer(delta, s[k - 1])
 
         dqdw = [dqdw[i] / len(x) for i in range(len(dqdw))]
-        self._update_weights(beta, dqdw)
+        self._update_weights(algorithm, beta, dqdw)
 
         return sum(sub_err) / len(sub_err)
 
@@ -193,12 +193,13 @@ class NeuralNetwork:
         errs = [a != b for a, b in zip(y_raw, maxed)]
         return 1 - (sum(errs) / len(y))
 
-    def _update_weights(self, beta, dqdw):
-        optim = 'adam'
-        if optim == 'sgd':
+    def _update_weights(self, algorithm, beta, dqdw):
+        if algorithm == 'sgd':
             self._sgd(beta, dqdw)
-        elif optim == 'adam':
+        elif algorithm == 'adam':
             self._adam(beta, dqdw)
+        else:
+            raise NotImplementedError(f'Algorithm {algorithm} not implemented!')
 
     def _sgd(self, beta, dqdw):
         for k in range(len(self.weights)):
